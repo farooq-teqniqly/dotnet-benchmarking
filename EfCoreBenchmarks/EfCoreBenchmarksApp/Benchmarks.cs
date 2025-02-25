@@ -1,24 +1,17 @@
 ﻿using BenchmarkDotNet.Attributes;
-using Microsoft.Extensions.DependencyInjection;
 
 namespace EfCoreBenchmarksApp
 {
     [MemoryDiagnoser]
     public class Benchmarks
     {
-        private readonly IServiceProvider _serviceProvider;
-
-        public Benchmarks(IServiceProvider serviceProvider)
-        {
-            _serviceProvider = serviceProvider;
-        }
+        public static string ConnectionString { get; set; } = default!;
 
         [GlobalSetup]
         public async Task Setup()
         {
-            using (var scope = _serviceProvider.CreateScope())
+            using (var context = new StoreContext(ConnectionString))
             {
-                var context = scope.ServiceProvider.GetRequiredService<StoreContext>();
                 await context.Database.EnsureDeletedAsync();
                 await context.Database.EnsureCreatedAsync();
                 await context.SeedData(1, 10);
@@ -28,6 +21,7 @@ namespace EfCoreBenchmarksApp
         [Benchmark]
         public void TestBenchmark()
         {
+            var x = 1;
         }
     }
 }

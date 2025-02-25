@@ -1,50 +1,47 @@
 ﻿using System.Reflection;
+using BenchmarkDotNet.Configs;
 using BenchmarkDotNet.Running;
-using EfCoreBenchmarksApp;
-using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
-using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Hosting;
 using Testcontainers.MsSql;
 
-var connectionStringTemplate = "Server=localhost,1433;Database=benchmark-efcore;User Id=sa;Password={0};";
-var host = BuildHost();
-await ConfigureAndStartContainer(host.Services.GetRequiredService<IConfigurationRoot>());
-// await host.RunAsync();
-BenchmarkSwitcher.FromAssembly(Assembly.GetExecutingAssembly()).Run(args);
+namespace EfCoreBenchmarksApp;
 
-return;
-
-IHost BuildHost() =>
-    Host.CreateDefaultBuilder(args).ConfigureServices((_, services) =>
+public class Program
+{
+    private static async Task ConfigureAndStartContainer(string dbPassword)
     {
+        var containerName = GetContainerName();
+
+        var sqlContainer = new MsSqlBuilder()
+            .WithImage("mcr.microsoft.com/mssql/server:2022-latest")
+            .WithPassword(dbPassword)
+            .WithPortBinding(1433, 1433)
+            .WithName(containerName)
+            .Build();
+
+        await sqlContainer.StartAsync();
+    }
+
+    private static string GetContainerName(string prefix = "benchmark-efcore") => $"{prefix}-{Ulid.NewUlid().ToString()[..10]}".ToLowerInvariant();
+
+    private static async Task Main(string[] args)
+    {
+        // var connectionStringTemplate = "Server=localhost,1433;Database=benchmark-efcore;User Id=sa;Password={0};";
+
         var config = new ConfigurationBuilder()
             .AddUserSecrets(Assembly.GetExecutingAssembly())
             .Build();
 
-        services.AddSingleton(config);
-
         var dbPassword = config["DatabaseSettings:Password"] ??
                          throw new InvalidOperationException("Database password not set.");
 
-        var connectionString = string.Format(connectionStringTemplate, dbPassword);
+        // Benchmarks.ConnectionString = string.Format(connectionStringTemplate, dbPassword);
 
-        services.AddDbContext<StoreContext>(options => options.UseSqlServer(connectionString), ServiceLifetime.Transient);
-    }).Build();
+        //Console.WriteLine($"Connection string: {Benchmarks.ConnectionString}");
 
-string GetContainerName(string prefix = "benchmark-efcore") => $"{prefix}-{Ulid.NewUlid().ToString()[..10]}".ToLowerInvariant();
+        await ConfigureAndStartContainer(dbPassword);
 
-async Task ConfigureAndStartContainer(IConfigurationRoot config)
-{
-    var dbPassword = config["DatabaseSettings:Password"] ?? throw new InvalidOperationException("Database password not set.");
-    var containerName = GetContainerName();
-
-    var sqlContainer = new MsSqlBuilder()
-        .WithImage("mcr.microsoft.com/mssql/server:2022-latest")
-        .WithPassword(dbPassword)
-        .WithPortBinding(1433, 1433)
-        .WithName(containerName)
-        .Build();
-
-    await sqlContainer.StartAsync();
+        var summary = BenchmarkRunner.Run(Assembly.GetExecutingAssembly());
+        // BenchmarkSwitcher.FromAssembly(typeof(Program).Assembly).Run(args: null, new DebugInProcessConfig());
+    }
 }
