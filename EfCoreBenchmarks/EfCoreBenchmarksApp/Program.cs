@@ -1,7 +1,5 @@
 ﻿using System.Reflection;
-using BenchmarkDotNet.Configs;
 using BenchmarkDotNet.Running;
-using Microsoft.Extensions.Configuration;
 using Testcontainers.MsSql;
 
 namespace EfCoreBenchmarksApp;
@@ -26,22 +24,8 @@ public class Program
 
     private static async Task Main(string[] args)
     {
-        // var connectionStringTemplate = "Server=localhost,1433;Database=benchmark-efcore;User Id=sa;Password={0};";
+        await ConfigureAndStartContainer(ConfigurationService.GetDbPassword());
 
-        var config = new ConfigurationBuilder()
-            .AddUserSecrets(Assembly.GetExecutingAssembly())
-            .Build();
-
-        var dbPassword = config["DatabaseSettings:Password"] ??
-                         throw new InvalidOperationException("Database password not set.");
-
-        // Benchmarks.ConnectionString = string.Format(connectionStringTemplate, dbPassword);
-
-        //Console.WriteLine($"Connection string: {Benchmarks.ConnectionString}");
-
-        await ConfigureAndStartContainer(dbPassword);
-
-        var summary = BenchmarkRunner.Run(Assembly.GetExecutingAssembly());
-        // BenchmarkSwitcher.FromAssembly(typeof(Program).Assembly).Run(args: null, new DebugInProcessConfig());
+        BenchmarkRunner.Run(Assembly.GetExecutingAssembly());
     }
 }

@@ -4,13 +4,6 @@ namespace EfCoreBenchmarksApp
 {
     public class StoreContext : DbContext
     {
-        private readonly string _connectionString;
-
-        public StoreContext(string connectionString)
-        {
-            _connectionString = connectionString;
-        }
-
         public DbSet<User> Users { get; set; }
 
         public async Task SeedData(int userCount = 100, int ordersPerUser = 1000)
@@ -20,21 +13,24 @@ namespace EfCoreBenchmarksApp
             var users = Enumerable.Range(0, userCount).Select(
                 userIndex => new User
                 {
-                    UserId = $"user-{userIndex}",
-                    Orders = (ICollection<Order>)Enumerable.Range(0, ordersPerUser).Select(orderIndex =>
+                    UserId = $"user-{userIndex + 1}",
+                    Orders = Enumerable.Range(0, ordersPerUser).Select(orderIndex =>
                         new Order
                         {
-                            OrderId = $"order-{userIndex}-{orderIndex}",
+                            OrderId = $"order-{userIndex + 1}-{orderIndex + 1}",
                             TotalAmount = random.Next(10, 100),
                             OrderDate = DateTime.UtcNow.AddDays(random.Next(1, 7) * -1)
-                        })
+                        }).ToList()
                 });
 
             Users.AddRange(users);
             await SaveChangesAsync();
         }
 
-        protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder) =>
-                                    optionsBuilder.UseSqlServer("Server=localhost,1433;Database=benchmark-efcore;User Id=sa;Password=111OFgilead!!!;");
+        protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
+        {
+            optionsBuilder.UseSqlServer(
+                $"Server=localhost,1433;Database=benchmark-efcore;User Id=sa;Password={ConfigurationService.GetDbPassword()};TrustServerCertificate=true");
+        }
     }
 }
