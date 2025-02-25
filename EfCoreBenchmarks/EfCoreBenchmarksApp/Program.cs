@@ -1,4 +1,5 @@
 ﻿using System.Reflection;
+using BenchmarkDotNet.Running;
 using EfCoreBenchmarksApp;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
@@ -9,7 +10,8 @@ using Testcontainers.MsSql;
 var connectionStringTemplate = "Server=localhost,1433;Database=benchmark-efcore;User Id=sa;Password={0};";
 var host = BuildHost();
 await ConfigureAndStartContainer(host.Services.GetRequiredService<IConfigurationRoot>());
-await host.RunAsync();
+// await host.RunAsync();
+BenchmarkSwitcher.FromAssembly(Assembly.GetExecutingAssembly()).Run(args);
 
 return;
 
