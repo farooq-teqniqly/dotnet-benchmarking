@@ -1,14 +1,34 @@
 ﻿using System.Reflection;
+using EfCoreBenchmarksApp;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
 using Testcontainers.MsSql;
 
-var config = new ConfigurationBuilder()
-    .AddUserSecrets(Assembly.GetExecutingAssembly())
-    .Build();
+var connectionStringTemplate = "Server=localhost,1433;Database=benchmark-efcore;User Id=sa;Password={0};";
+var host = BuildHost();
+await ConfigureAndStartContainer(host.Services.GetRequiredService<IConfigurationRoot>());
+await host.RunAsync();
 
-await ConfigureAndStartContainer(config);
-Console.WriteLine("Hello, World!");
 return;
+
+IHost BuildHost() =>
+    Host.CreateDefaultBuilder(args).ConfigureServices((_, services) =>
+    {
+        var config = new ConfigurationBuilder()
+            .AddUserSecrets(Assembly.GetExecutingAssembly())
+            .Build();
+
+        services.AddSingleton(config);
+
+        var dbPassword = config["DatabaseSettings:Password"] ??
+                         throw new InvalidOperationException("Database password not set.");
+
+        var connectionString = string.Format(connectionStringTemplate, dbPassword);
+
+        services.AddDbContext<StoreContext>(options => options.UseSqlServer(connectionString), ServiceLifetime.Transient);
+    }).Build();
 
 string GetContainerName(string prefix = "benchmark-efcore") => $"{prefix}-{Ulid.NewUlid().ToString()[..10]}".ToLowerInvariant();
 
