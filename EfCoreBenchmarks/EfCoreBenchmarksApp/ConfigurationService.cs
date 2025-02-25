@@ -21,5 +21,7 @@ namespace EfCoreBenchmarksApp
 
             return dbPassword;
         }
+
+        public static int GetDbPort() => 1433;
     }
 }

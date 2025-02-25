@@ -13,7 +13,7 @@ public class Program
         var sqlContainer = new MsSqlBuilder()
             .WithImage("mcr.microsoft.com/mssql/server:2022-latest")
             .WithPassword(dbPassword)
-            .WithPortBinding(1433, 1433)
+            .WithPortBinding(ConfigurationService.GetDbPort(), 1433)
             .WithName(containerName)
             .Build();
 
